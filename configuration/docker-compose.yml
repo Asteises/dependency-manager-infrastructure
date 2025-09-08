@@ -1,0 +1,25 @@
+services:
+  backend:
+    image: dependency-manager-backend:latest
+    container_name: dependency-manager-backend
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:1551/actuator/health || exit 1" ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - dependency_manager_logs:/app/logs
+    ports:
+      - "1551:1551"
+    networks:
+      - dependency_manager-network
+
+volumes:
+  dependency_manager_logs:
+
+networks:
+  dependency_manager-network:
+    driver: bridge
