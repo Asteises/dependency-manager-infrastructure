@@ -3,8 +3,8 @@ set -euo pipefail
 IFS=$'\n\t'
 
 # ==================== Конфигурация ====================
-: "${REPO_URL:=https://github.com/Asteises/dependency-manager-infrastructure.git}"
-: "${REPO_DIR:=/opt/dependency-manager-infrastructure}"
+: "${REPO_URL:=git@github.com:Asteises/dependency-manager-infrastructure.git}"
+: "${REPO_DIR:=/opt/dependency-manager-infrastructure/configuration}"
 
 : "${DEV_TARGET_APP_DIR:=/opt/dependency-manager/dev}"
 : "${PROD_TARGET_APP_DIR:=/opt/dependency-manager/prod}"
@@ -134,7 +134,7 @@ if [ "$USE_TEMPLATES" -eq 1 ]; then
   render_tpl "$REPO_DIR/nginx/dev.conf.tpl"  "$DEV_NGINX_CONF_TARGET"  0644
   render_tpl "$REPO_DIR/nginx/prod.conf.tpl" "$PROD_NGINX_CONF_TARGET" 0644
 else
-  atomic_install "$REPO_DIR/nginx/dm.asteises.ru.conf" "$DEV_NGINX_CONF_TARGET" 0644
+  atomic_install "$REPO_DIR/nginx/dm-test.asteises.ru.conf" "$DEV_NGINX_CONF_TARGET" 0644
   atomic_install "$REPO_DIR/nginx/dm.asteises.ru.conf" "$PROD_NGINX_CONF_TARGET" 0644
 fi
 

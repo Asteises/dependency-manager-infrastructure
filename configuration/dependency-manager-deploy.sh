@@ -16,7 +16,7 @@ CLEAN_IMAGES="${3:-yes}"
 APP_ROOT="/opt/dependency-manager"
 
 BACKEND_REPO_URL="https://github.com/KovtunovRoman/dependency-manager.git"
-FRONTEND_REPO_URL="https://github.com/Asteises/dependency-manager-vue-ui.git"
+FRONTEND_REPO_URL="git@github.com:Asteises/dependency-manager-infrastructure.git"
 
 BACKEND_DIR="${APP_ROOT}/backend"
 FRONTEND_DIR="${APP_ROOT}/frontend"
