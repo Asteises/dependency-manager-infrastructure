@@ -3,8 +3,8 @@ set -euo pipefail
 IFS=$'\n\t'
 
 # ==================== Конфигурация ====================
-: "${REPO_URL:=git@github.com:Asteises/dependency-manager-infrastructure.git}"
-: "${REPO_DIR:=/opt/dependency-manager-infrastructure/configuration}"
+: "${REPO_URL:=https://github.com/Asteises/dependency-manager-infrastructure.git}"
+: "${REPO_DIR:=/opt/dependency-manager-infrastructure}"
 
 : "${DEV_TARGET_APP_DIR:=/opt/dependency-manager/dev}"
 : "${PROD_TARGET_APP_DIR:=/opt/dependency-manager/prod}"
@@ -122,20 +122,20 @@ render_tpl() {
 cd "$REPO_DIR"
 
 # docker-compose для DEV/PROD
-atomic_install "$REPO_DIR/docker-compose.yml" "$DEV_TARGET_APP_DIR/docker-compose.yml" 0644
-atomic_install "$REPO_DIR/dependency-manager-deploy.sh" "$DEV_TARGET_APP_DIR/dependency-manager-deploy.sh" 0755
+atomic_install "$REPO_DIR/configuration/docker-compose.yml" "$DEV_TARGET_APP_DIR/docker-compose.yml" 0644
+atomic_install "$REPO_DIR/configuration/dependency-manager-deploy.sh" "$DEV_TARGET_APP_DIR/dependency-manager-deploy.sh" 0755
 
-atomic_install "$REPO_DIR/dependency-manager-deploy.sh" "$PROD_TARGET_APP_DIR/dependency-manager-deploy.sh" 0755
-atomic_install "$REPO_DIR/docker-compose.yml" "$PROD_TARGET_APP_DIR/docker-compose.yml" 0644
+atomic_install "$REPO_DIR/configuration/dependency-manager-deploy.sh" "$PROD_TARGET_APP_DIR/dependency-manager-deploy.sh" 0755
+atomic_install "$REPO_DIR/configuration/docker-compose.yml" "$PROD_TARGET_APP_DIR/docker-compose.yml" 0644
 
 # Nginx конфиги: либо из готовых файлов, либо из шаблонов
 if [ "$USE_TEMPLATES" -eq 1 ]; then
   export DEV_DOMAIN PROD_DOMAIN
-  render_tpl "$REPO_DIR/nginx/dev.conf.tpl"  "$DEV_NGINX_CONF_TARGET"  0644
-  render_tpl "$REPO_DIR/nginx/prod.conf.tpl" "$PROD_NGINX_CONF_TARGET" 0644
+  render_tpl "$REPO_DIR/configuration/nginx/dev.conf.tpl"  "$DEV_NGINX_CONF_TARGET"  0644
+  render_tpl "$REPO_DIR/configuration/nginx/prod.conf.tpl" "$PROD_NGINX_CONF_TARGET" 0644
 else
-  atomic_install "$REPO_DIR/nginx/dm-test.asteises.ru.conf" "$DEV_NGINX_CONF_TARGET" 0644
-  atomic_install "$REPO_DIR/nginx/dm.asteises.ru.conf" "$PROD_NGINX_CONF_TARGET" 0644
+  atomic_install "$REPO_DIR/configuration/nginx/dm-test.asteises.ru.conf" "$DEV_NGINX_CONF_TARGET" 0644
+  atomic_install "$REPO_DIR/configuration/nginx/dm.asteises.ru.conf" "$PROD_NGINX_CONF_TARGET" 0644
 fi
 
 # ==================== Проверка и перезагрузка Nginx ====================

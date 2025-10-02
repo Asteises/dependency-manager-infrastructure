@@ -10,18 +10,18 @@ BRANCH_FRONTEND="${2:-dev}"
 CLEAN_IMAGES="${3:-yes}"
 
 ### ================================
-### 1. Пути и переменные
+### 1.1 Пути и переменные
 ### ================================
 
 APP_ROOT="/opt/dependency-manager"
 
-BACKEND_REPO_URL="https://github.com/KovtunovRoman/dependency-manager.git"
-FRONTEND_REPO_URL="git@github.com:Asteises/dependency-manager-infrastructure.git"
+BACKEND_REPO_URL="git@github-kovtunov:KovtunovRoman/dependency-manager.git"
+FRONTEND_REPO_URL="git@github-asteises:Asteises/dependency-manager-vue-ui.git"
 
 BACKEND_DIR="${APP_ROOT}/backend"
 FRONTEND_DIR="${APP_ROOT}/frontend"
 FRONTEND_DIST_DIR="/var/www/dm/js"
-COMPOSE_FILE="${APP_ROOT}/docker-compose.yml"
+COMPOSE_FILE="$(cd "$(dirname "$0")" && pwd)/docker-compose.yml"
 
 IMAGE_NAME="dependency-manager"
 DATE_TAG=$(date +'%Y%m%d%H%M%S')
@@ -29,6 +29,14 @@ BACKEND_TAG="${IMAGE_NAME}:${DATE_TAG}"
 
 FRONTEND_BUILD_IMAGE="dependency-manager-frontend-builder"
 FRONTEND_EXPORT_CONTAINER="dependency-manager-frontend-export"
+
+### ================================
+### 1.2 Подготовка каталогов
+### ================================
+echo "=============================="
+echo "${LOG_TAG} Инициализируем переменные и подготавливаем директории..."
+
+mkdir -p "${APP_ROOT}" "${BACKEND_DIR}" "${FRONTEND_DIR}" "$(dirname "${FRONTEND_DIST_DIR}")" "${FRONTEND_DIST_DIR}"
 
 ### ================================
 ### 2. Логирование
@@ -47,21 +55,28 @@ echo "=============================="
 ### ================================
 
 # Backend
+if [ ! -d "$BACKEND_DIR/.git" ]; then
+  echo "[BACKEND] Репозиторий не инициализирован — клонируем..."
+  rm -rf "$BACKEND_DIR" && mkdir -p "$BACKEND_DIR"
+  git clone -b "$BRANCH_BACKEND" "$BACKEND_REPO_URL" "$BACKEND_DIR"
+fi
+
 cd "$BACKEND_DIR"
 echo "[BACKEND] Обновляем репозиторий..."
 git fetch origin
 git reset --hard "origin/$BRANCH_BACKEND"
 
 # Frontend
-if [ ! -d "$FRONTEND_DIR" ]; then
-  echo "[FRONTEND] Клонируем $FRONTEND_REPO_URL..."
+if [ ! -d "$FRONTEND_DIR/.git" ]; then
+  echo "[FRONTEND] Репозиторий не инициализирован — клонируем..."
+  rm -rf "$FRONTEND_DIR" && mkdir -p "$FRONTEND_DIR"
   git clone -b "$BRANCH_FRONTEND" "$FRONTEND_REPO_URL" "$FRONTEND_DIR"
-else
-  echo "[FRONTEND] Обновляем репозиторий..."
-  cd "$FRONTEND_DIR"
-  git fetch origin
-  git reset --hard "origin/$BRANCH_FRONTEND"
 fi
+
+echo "[FRONTEND] Обновляем репозиторий..."
+cd "$FRONTEND_DIR"
+git fetch origin
+git reset --hard "origin/$BRANCH_FRONTEND"
 
 ### ================================
 ### 4. Сборка frontend внутри Docker
@@ -99,11 +114,35 @@ echo "[BACKEND] Собираем Docker-образ: $BACKEND_TAG"
 docker build -t "$BACKEND_TAG" .
 
 echo "[BACKEND] Обновляем тег в docker-compose.yml"
-sed -i "s|image: ${IMAGE_NAME}:.*|image: ${BACKEND_TAG}|g" "$COMPOSE_FILE"
+# 1) Если в compose у backend уже есть image: <что-то>, просто переопределим
+if awk '/^services:/,/^[^ ]/{if($0~/^  backend:/){inb=1; next} if(inb&&$0~/^[^ ]/){inb=0} if(inb&&$0~/^[[:space:]]*image:/){found=1}} END{exit found?0:1}' "$COMPOSE_FILE"; then
+  # внутри блока services.backend заменим строку image: на наш тег
+  sed -i -E '/^services:/,/^[^ ]/{
+    /^  backend:/,/^[^ ]/{
+      s|^[[:space:]]*image:.*$|    image: '"${BACKEND_TAG}"'|
+    }
+  }' "$COMPOSE_FILE"
+else
+  # 2) Если строки image: нет — создаём override с нужным образом
+  OVERRIDE_FILE="$(dirname "$COMPOSE_FILE")/docker-compose.override.yml"
+  cat > "$OVERRIDE_FILE" <<EOF
+services:
+  backend:
+    image: ${BACKEND_TAG}
+EOF
+  echo "[BACKEND] Создан ${OVERRIDE_FILE} для переопределения образа backend."
+fi
 
 echo "[BACKEND] Перезапускаем контейнер..."
-docker-compose -f "$COMPOSE_FILE" stop backend
-docker-compose -f "$COMPOSE_FILE" up -d backend
+OVERRIDE_FILE="$(dirname "$COMPOSE_FILE")/docker-compose.override.yml"
+
+if [ -f "$OVERRIDE_FILE" ]; then
+  docker-compose -f "$COMPOSE_FILE" -f "$OVERRIDE_FILE" stop backend || true
+  docker-compose -f "$COMPOSE_FILE" -f "$OVERRIDE_FILE" up -d backend
+else
+  docker-compose -f "$COMPOSE_FILE" stop backend || true
+  docker-compose -f "$COMPOSE_FILE" up -d backend
+fi
 
 ### ================================
 ### 6. Очистка старых образов

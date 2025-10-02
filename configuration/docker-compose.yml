@@ -4,7 +4,8 @@ services:
     container_name: dependency-manager-backend
     restart: unless-stopped
     environment:
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
+      SPRING_PROFILES_ACTIVE: dev
+#      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
     healthcheck:
       test: [ "CMD-SHELL", "curl -f http://localhost:1551/actuator/health || exit 1" ]
       interval: 15s
